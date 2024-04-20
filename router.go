@@ -1,4 +1,4 @@
-package http1_1
+package http
 
 type Router interface {
 	Handle(r *Request, w *Response) error

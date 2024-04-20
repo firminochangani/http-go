@@ -1,3 +1,3 @@
 # http-go
 
-Implementation of the several versions of the Hypertext Transfer Protocol (HTTP) from scratch for learning purposes.
+Implementation of the Hypertext Transfer Protocol (HTTP 1.1) from scratch for learning purposes.

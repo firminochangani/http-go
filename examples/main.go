@@ -10,8 +10,6 @@ import (
 	"time"
 
 	"github.com/brianvoe/gofakeit/v6"
-
-	"github.com/flowck/http-go/http1_1"
 )
 
 func main() {

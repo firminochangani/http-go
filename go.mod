@@ -1,4 +1,4 @@
-module github.com/flowck/http-go/http1_1
+module github.com/flowck/http-go
 
 go 1.22.0
 

@@ -1,4 +1,4 @@
-package http1_1
+package http
 
 import (
 	"context"
@@ -131,6 +131,7 @@ func parseRequest(r *Request, message []byte) *Request {
 	var lineHeader []string
 	lineCount := 0
 	for i := 0; i < len(message); i++ {
+		//nolint
 		if message[i] == 10 {
 			// request's first line
 			if lineCount == 0 {
