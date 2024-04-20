@@ -18,7 +18,7 @@ type ServerDefaultNaiveRouter struct {
 func (h ServerDefaultNaiveRouter) Handle(r *Request, w *Response) error {
 	h.lock.RLock()
 	defer h.lock.RUnlock()
-	
+
 	handlerFunc, exists := h.paths[r.Method][r.URL.Path]
 	if !exists {
 		w.WriteStatus(404)
