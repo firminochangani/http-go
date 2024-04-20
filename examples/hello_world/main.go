@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	router := http_go.NewServerDefaultRouter()
+	router := http_go.NewServerDefaultNaiveRouter()
 
 	router.GET("/", func(r *http_go.Request, w *http_go.Response) error {
 		w.Headers.Set("X-From", "Pure implementation of the HTTP 1.1 protocol")

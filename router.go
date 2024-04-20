@@ -1,5 +1,7 @@
 package http_go
 
+import "sync"
+
 type Router interface {
 	Handle(r *Request, w *Response) error
 }
@@ -9,10 +11,14 @@ type httpMethod = string
 type routePaths map[string]Handler
 
 type ServerDefaultNaiveRouter struct {
+	lock  *sync.RWMutex
 	paths map[httpMethod]routePaths
 }
 
 func (h ServerDefaultNaiveRouter) Handle(r *Request, w *Response) error {
+	h.lock.RLock()
+	defer h.lock.RUnlock()
+	
 	handlerFunc, exists := h.paths[r.Method][r.URL.Path]
 	if !exists {
 		w.WriteStatus(404)
@@ -22,7 +28,7 @@ func (h ServerDefaultNaiveRouter) Handle(r *Request, w *Response) error {
 	return handlerFunc(r, w)
 }
 
-func NewServerDefaultRouter() ServerDefaultNaiveRouter {
+func NewServerDefaultNaiveRouter() ServerDefaultNaiveRouter {
 	paths := make(map[httpMethod]routePaths)
 	paths[MethodGET] = make(routePaths)
 	paths[MethodPOST] = make(routePaths)
@@ -36,11 +42,13 @@ func NewServerDefaultRouter() ServerDefaultNaiveRouter {
 
 	return ServerDefaultNaiveRouter{
 		paths: paths,
+		lock:  &sync.RWMutex{},
 	}
 }
 
 func (h ServerDefaultNaiveRouter) GET(path string, handler Handler) {
-	// how to register a route having in mind performant lookups
-	// naive implementation of a router
+	h.lock.RLock()
+	defer h.lock.RUnlock()
+
 	h.paths[MethodGET][path] = handler
 }

@@ -20,7 +20,7 @@ func main() {
 	done := make(chan os.Signal, 1)
 	signal.Notify(done, syscall.SIGINT, syscall.SIGTERM)
 
-	router := http_go.NewServerDefaultRouter()
+	router := http_go.NewServerDefaultNaiveRouter()
 	router.GET("/", func(r *http_go.Request, w *http_go.Response) error {
 		w.Headers.Set("Content-Type", "text/html; charset=UTF-8")
 		return w.Write([]byte("Hello world"))
