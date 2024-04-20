@@ -1,4 +1,4 @@
-package http
+package http_go
 
 type Router interface {
 	Handle(r *Request, w *Response) error

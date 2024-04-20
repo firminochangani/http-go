@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/brianvoe/gofakeit/v6"
+
+	"github.com/flowck/http-go"
 )
 
 func main() {
@@ -18,14 +20,13 @@ func main() {
 	done := make(chan os.Signal, 1)
 	signal.Notify(done, syscall.SIGINT, syscall.SIGTERM)
 
-	router := http1_1.NewServerDefaultRouter()
-	router.GET("/", func(r *http1_1.Request, w *http1_1.Response) error {
-		log.Println("handling request")
+	router := http_go.NewServerDefaultRouter()
+	router.GET("/", func(r *http_go.Request, w *http_go.Response) error {
 		w.Headers.Set("Content-Type", "text/html; charset=UTF-8")
 		return w.Write([]byte("Hello world"))
 	})
 
-	router.GET("/peoples", func(r *http1_1.Request, w *http1_1.Response) error {
+	router.GET("/peoples", func(r *http_go.Request, w *http_go.Response) error {
 		peoples := make([]map[string]string, 100)
 
 		for i := 0; i < 100; i++ {
@@ -47,7 +48,7 @@ func main() {
 		return w.Write(payload)
 	})
 
-	s := http1_1.Server{
+	s := http_go.Server{
 		Addr:   ":8080",
 		Router: router,
 		Ctx:    ctx,

@@ -1,4 +1,4 @@
-package http
+package http_go
 
 import (
 	"context"
@@ -99,11 +99,14 @@ func (s *Server) acceptLoop() error {
 func (s *Server) handleRequest(ctx context.Context, conn net.Conn) {
 	message := make([]byte, 1024*2)
 	r := &Request{
+		Headers: Header{},
 		Context: ctx,
 	}
 
 	w := &Response{
-		conn: conn,
+		Headers:    Header{},
+		statusCode: StatusCode{},
+		conn:       conn,
 	}
 
 	//TODO: assert whether in a post request with multipart payload

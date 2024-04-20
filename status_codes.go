@@ -1,4 +1,4 @@
-package http
+package http_go
 
 type StatusCode struct {
 	Name string
