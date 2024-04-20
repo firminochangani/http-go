@@ -1,0 +1,19 @@
+version: '3'
+
+tasks:
+  run:
+    cmds:
+      - task watch -- go run ./examples
+
+  demo:
+    cmds:
+      - task watch -- go run ./examples/std_http
+
+  watch:
+    cmds:
+      - |
+        reflex -r '\.go' -s -- sh -c '{{.CLI_ARGS}}'
+
+  test:
+    cmds:
+      - go test -count=1 -v ./...

@@ -1,14 +1,25 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"log"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/brianvoe/gofakeit/v6"
-	"http_v1_1"
+
+	"github.com/flowck/http-go/http1_1"
 )
 
 func main() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	done := make(chan os.Signal, 1)
+	signal.Notify(done, syscall.SIGINT, syscall.SIGTERM)
+
 	router := http1_1.NewServerDefaultRouter()
 	router.GET("/", func(r *http1_1.Request, w *http1_1.Response) error {
 		log.Println("handling request")
@@ -41,7 +52,17 @@ func main() {
 	s := http1_1.Server{
 		Addr:   ":8080",
 		Router: router,
+		Ctx:    ctx,
 	}
 
-	log.Println(s.ListenAndServe())
+	go func() {
+		log.Println("server is running")
+		log.Println(s.ListenAndServe())
+		log.Println("server got shutdown")
+	}()
+
+	<-done
+
+	log.Println(s.Shutdown(nil))
+	time.Sleep(time.Second * 2)
 }

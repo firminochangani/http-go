@@ -8,7 +8,7 @@ import (
 	"net"
 	"net/url"
 	"strings"
-	"time"
+	"sync/atomic"
 )
 
 const (
@@ -23,65 +23,29 @@ const (
 	MethodPATCH   = "PATCH"
 )
 
-type Header map[string]string
-
-func (h Header) Set(name, value string) {
-	h[name] = value
-}
-
-type Request struct {
-	Method  string
-	Headers Header
-	URL     *url.URL
-}
-
-type Response struct {
-	Headers Header
-
-	responseWritten bool
-	conn            net.Conn
-	statusCode      StatusCode
-}
-
-func (r *Response) Write(message []byte) error {
-	if !r.responseWritten && r.statusCode.Code == 0 {
-		r.statusCode = StatusCodeOK
-	}
-
-	r.Headers.Set("Date", time.Now().String())
-
-	// write the status code set previously if and only if no previous response has been set to the client
-	if !r.responseWritten && r.statusCode.Code > 0 {
-		headers := ""
-		for name, value := range r.Headers {
-			headers += fmt.Sprintf("%s: %s\n", name, value)
-		}
-
-		_, err := r.conn.Write([]byte(fmt.Sprintf("HTTP/1.1 %d %s\n%s\n\n", r.statusCode.Code, r.statusCode.Name, headers)))
-		if err != nil {
-			return err
-		}
-	}
-
-	r.responseWritten = true
-	_, err := r.conn.Write(message)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (r *Response) WriteStatus(statusCode int) {
-	r.statusCode = newStatusCode(statusCode)
-}
+var (
+	ErrServerIsClosed        = errors.New("server is closed")
+	ErrServerContextIsClosed = errors.New("server's context is closed")
+)
 
 type Server struct {
 	Addr   string
 	Router Router
 
-	ctx      context.Context
-	listener net.Listener
+	isRunning atomic.Bool
+	listener  net.Listener
+	done      chan interface{}
+	Ctx       context.Context
+}
+
+func (s *Server) setServerDefaults() {
+	if s.Ctx == nil {
+		s.Ctx = context.Background()
+	}
+
+	s.isRunning = atomic.Bool{}
+	s.isRunning.Store(true)
+	s.done = make(chan interface{})
 }
 
 func (s *Server) ListenAndServe() error {
@@ -91,36 +55,55 @@ func (s *Server) ListenAndServe() error {
 		return err
 	}
 
-	if s.ctx == nil {
-		s.ctx = context.Background()
-	}
+	s.setServerDefaults()
 
-	s.acceptLoop()
-
-	return nil
+	return s.acceptLoop()
 }
 
 func (s *Server) Shutdown(ctx context.Context) error {
+	if s.listener == nil {
+		return nil
+	}
+
+	if s.isRunning.Load() {
+		close(s.done)
+		s.isRunning.Store(false)
+	}
+
 	return s.listener.Close()
 }
 
-func (s *Server) acceptLoop() {
+func (s *Server) acceptLoop() error {
 	for {
-		conn, err := s.listener.Accept()
-		if errors.Is(err, net.ErrClosed) {
-			break
-		}
+		select {
+		case <-s.done:
+			return ErrServerIsClosed
+		case <-s.Ctx.Done():
+			return ErrServerContextIsClosed
+		default:
+			conn, err := s.listener.Accept()
+			if errors.Is(err, net.ErrClosed) {
+				break
+			}
 
-		go s.handleRequest(context.WithoutCancel(s.ctx), conn)
+			if err != nil {
+				fmt.Println(err)
+				continue
+			}
+
+			go s.handleRequest(context.WithoutCancel(s.Ctx), conn)
+		}
 	}
 }
 
 func (s *Server) handleRequest(ctx context.Context, conn net.Conn) {
 	message := make([]byte, 1024*2)
-	r := &Request{}
+	r := &Request{
+		Context: ctx,
+	}
+
 	w := &Response{
-		conn:    conn,
-		Headers: Header{},
+		conn: conn,
 	}
 
 	//TODO: assert whether in a post request with multipart payload
