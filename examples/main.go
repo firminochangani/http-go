@@ -62,6 +62,6 @@ func main() {
 
 	<-done
 
-	log.Println(s.Shutdown(nil))
+	log.Println(s.Shutdown())
 	time.Sleep(time.Second * 2)
 }

@@ -38,16 +38,6 @@ type Server struct {
 	Ctx       context.Context
 }
 
-func (s *Server) setServerDefaults() {
-	if s.Ctx == nil {
-		s.Ctx = context.Background()
-	}
-
-	s.isRunning = atomic.Bool{}
-	s.isRunning.Store(true)
-	s.done = make(chan interface{})
-}
-
 func (s *Server) ListenAndServe() error {
 	var err error
 	s.listener, err = net.Listen("tcp", s.Addr)
@@ -60,7 +50,7 @@ func (s *Server) ListenAndServe() error {
 	return s.acceptLoop()
 }
 
-func (s *Server) Shutdown(ctx context.Context) error {
+func (s *Server) Shutdown() error {
 	if s.listener == nil {
 		return nil
 	}
@@ -71,6 +61,16 @@ func (s *Server) Shutdown(ctx context.Context) error {
 	}
 
 	return s.listener.Close()
+}
+
+func (s *Server) setServerDefaults() {
+	if s.Ctx == nil {
+		s.Ctx = context.Background()
+	}
+
+	s.isRunning = atomic.Bool{}
+	s.isRunning.Store(true)
+	s.done = make(chan interface{})
 }
 
 func (s *Server) acceptLoop() error {
@@ -127,12 +127,19 @@ func (s *Server) handleRequest(ctx context.Context, conn net.Conn) {
 	s.closeConn(conn)
 }
 
+func (s *Server) closeConn(conn net.Conn) {
+	err := conn.Close()
+	if err != nil {
+		fmt.Println("unable to close the connection successfully", err)
+	}
+}
+
 func parseRequest(r *Request, message []byte) *Request {
 	r.Headers = make(Header)
 
 	line := ""
-	var lineHeader []string
 	lineCount := 0
+	var lineHeader []string
 	for i := 0; i < len(message); i++ {
 		//nolint
 		if message[i] == 10 {
@@ -161,11 +168,4 @@ func parseRequest(r *Request, message []byte) *Request {
 	}
 
 	return r
-}
-
-func (s *Server) closeConn(conn net.Conn) {
-	err := conn.Close()
-	if err != nil {
-		fmt.Println("unable to close the connection successfully", err)
-	}
 }
