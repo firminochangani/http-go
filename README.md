@@ -49,7 +49,12 @@ I think that by properly supporting the two methods below the remaining HTTP met
 - GET method
 - POST method
 
+## Learnings to write about
+
+- Parsing a GET/HTTP request
+
 ## References
 
 - https://http.dev/
 - https://www.rfc-editor.org/rfc/rfc9110.html
+- https://developer.mozilla.org/en-US/docs/Web/HTTP/Messages

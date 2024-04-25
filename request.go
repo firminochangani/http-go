@@ -6,8 +6,16 @@ import (
 )
 
 type Request struct {
-	Method  string
-	Headers Header
-	URL     *url.URL
-	Context context.Context
+	Method     string
+	Headers    Header
+	URL        *url.URL
+	RequestURI string
+	Proto      string
+	Host       string
+
+	ctx context.Context
+}
+
+func (r *Request) Context() context.Context {
+	return r.ctx
 }

@@ -52,3 +52,10 @@ func (h ServerDefaultNaiveRouter) GET(path string, handler Handler) {
 
 	h.paths[MethodGET][path] = handler
 }
+
+func (h ServerDefaultNaiveRouter) POST(path string, handler Handler) {
+	h.lock.RLock()
+	defer h.lock.RUnlock()
+
+	h.paths[MethodPOST][path] = handler
+}

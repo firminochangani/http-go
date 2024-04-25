@@ -4,6 +4,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -53,4 +54,29 @@ func TestServer_GET(t *testing.T) {
 	_, err = client.Get("http://localhost:6060/people")
 	require.Error(t, err, "no request shall be handled after .Shutdown() gets called")
 	wg.Wait()
+}
+
+func TestReqParser(t *testing.T) {
+	message := string(getReq())
+
+	t.Log(len(strings.Split(message, "\n")))
+}
+
+func getReq() []byte {
+	return []byte(`
+POST / HTTP/1.1
+Host: www.example.re
+Content-Type: multipart/form-data; boundary=”NextField”
+Content-Length: 125
+
+--NextField
+Content-Disposition: form-data; name=”Job”
+
+100
+
+-- NextField
+Content-Disposition: form-data; name=”Priority”
+
+2
+`)
 }

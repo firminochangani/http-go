@@ -23,22 +23,26 @@ func (r *Response) Write(message []byte) error {
 
 	// write the status code set previously if and only if no previous response has been set to the client
 	if !r.responseWritten && r.statusCode.Code > 0 {
-		headers := ""
+		headers := "\r\n"
 		for name, value := range r.Headers {
-			headers += fmt.Sprintf("%s: %s\n", name, value)
+			headers += fmt.Sprintf("%s: %s\r\n", name, value)
 		}
+		headers += "\r\n"
 
-		_, err := r.conn.Write([]byte(fmt.Sprintf("HTTP/1.1 %d %s\n%s\n", r.statusCode.Code, r.statusCode.Name, headers)))
+		//TODO: extra allocation
+		res := fmt.Sprintf("HTTP/1.1 %s%s%s", r.statusCode, headers, message)
+		_, err := r.conn.Write([]byte(res))
+		if err != nil {
+			return err
+		}
+	} else {
+		_, err := r.conn.Write(message)
 		if err != nil {
 			return err
 		}
 	}
 
 	r.responseWritten = true
-	_, err := r.conn.Write(message)
-	if err != nil {
-		return err
-	}
 
 	return nil
 }

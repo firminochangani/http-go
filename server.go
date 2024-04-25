@@ -1,11 +1,13 @@
 package http_go
 
 import (
+	"bufio"
 	"context"
 	"errors"
 	"fmt"
 	"log"
 	"net"
+	"net/textproto"
 	"net/url"
 	"strings"
 	"sync/atomic"
@@ -29,13 +31,14 @@ var (
 )
 
 type Server struct {
-	Addr   string
-	Router Router
+	MaxHeaderBytes int
+	Addr           string
+	Router         Router
+	Ctx            context.Context
 
 	isRunning atomic.Bool
 	listener  net.Listener
 	done      chan interface{}
-	Ctx       context.Context
 }
 
 func (s *Server) ListenAndServe() error {
@@ -91,37 +94,39 @@ func (s *Server) acceptLoop() error {
 				continue
 			}
 
+			log.Println("handling request")
 			go s.handleRequest(context.WithoutCancel(s.Ctx), conn)
 		}
 	}
 }
 
 func (s *Server) handleRequest(ctx context.Context, conn net.Conn) {
-	message := make([]byte, 1024*2)
 	r := &Request{
+		ctx:     ctx,
 		Headers: Header{},
-		Context: ctx,
 	}
 
 	w := &Response{
+		conn:       conn,
 		Headers:    Header{},
 		statusCode: StatusCode{},
-		conn:       conn,
 	}
 
-	//TODO: assert whether in a post request with multipart payload
-	// the headers are read all at once or read line by line
-	n, err := conn.Read(message)
+	connReader := bufio.NewReader(conn)
+
+	err := parseRequest(r, connReader)
 	if err != nil {
-		log.Println("unable to read the request", message)
+		w.WriteStatus(StatusBadRequest.Code)
+		_ = w.Write([]byte(err.Error()))
 		s.closeConn(conn)
 		return
 	}
 
-	parseRequest(r, message[:n])
 	err = s.Router.Handle(r, w)
-	if err != nil {
-		fmt.Println(err)
+	if err != nil && !w.responseWritten {
+		_ = w.Write([]byte(fmt.Sprintf("Unhandled error: %s", err)))
+	} else if !w.responseWritten {
+		_ = w.Write([]byte(""))
 	}
 
 	s.closeConn(conn)
@@ -134,7 +139,52 @@ func (s *Server) closeConn(conn net.Conn) {
 	}
 }
 
-func parseRequest(r *Request, message []byte) *Request {
+func parseRequest(r *Request, connReader *bufio.Reader) error {
+	tp := textproto.NewReader(connReader)
+
+	// https://developer.mozilla.org/en-US/docs/Web/HTTP/Messages#request_line
+	requestLine, err := tp.ReadLine()
+	if err != nil {
+		panic(err)
+	}
+
+	requestLineParts := strings.Split(requestLine, " ")
+	if len(requestLineParts) < 2 {
+		return fmt.Errorf("error %s", StatusBadRequest)
+	}
+
+	// Set the method
+	r.Method = strings.ToUpper(requestLineParts[0])
+
+	// Parse the request url
+	requestUrl, err := url.Parse(requestLineParts[1])
+	if err != nil {
+		return fmt.Errorf("error %s", StatusBadRequest)
+	}
+	r.URL = requestUrl
+
+	// Set the protocols version. This could be useful if I ever intend to support HTTP/2
+	if len(requestLineParts) >= 3 {
+		r.Proto = strings.TrimSpace(requestLineParts[2])
+	}
+
+	headers, err := tp.ReadMIMEHeader()
+	if err != nil {
+		log.Println(err)
+	} else {
+		for k, v := range headers {
+			r.Headers.Set(strings.ToLower(k), strings.Join(v, " "))
+		}
+	}
+
+	if host, exists := r.Headers.Get("host"); exists {
+		r.Host = host
+	}
+
+	return nil
+}
+
+func parseMessageToRequestBack(r *Request, message []byte) *Request {
 	r.Headers = make(Header)
 
 	line := ""

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log"
 	"os"
 	"os/signal"
@@ -23,7 +24,11 @@ func main() {
 	router := http_go.NewServerDefaultNaiveRouter()
 	router.GET("/", func(r *http_go.Request, w *http_go.Response) error {
 		w.Headers.Set("Content-Type", "text/html; charset=UTF-8")
-		return w.Write([]byte("Hello world"))
+		return errors.New("something") // w.Write([]byte("Hello world"))
+	})
+
+	router.POST("/", func(r *http_go.Request, w *http_go.Response) error {
+		return w.Write([]byte("request received"))
 	})
 
 	router.GET("/peoples", func(r *http_go.Request, w *http_go.Response) error {
