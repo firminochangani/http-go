@@ -183,39 +183,3 @@ func parseRequest(r *Request, connReader *bufio.Reader) error {
 
 	return nil
 }
-
-func parseMessageToRequestBack(r *Request, message []byte) *Request {
-	r.Headers = make(Header)
-
-	line := ""
-	lineCount := 0
-	var lineHeader []string
-	for i := 0; i < len(message); i++ {
-		//nolint
-		if message[i] == 10 {
-			// request's first line
-			if lineCount == 0 {
-				r.Method = strings.TrimSpace(strings.Split(line[:7], " ")[0])
-				u, err := url.Parse(strings.Split(line, " ")[1])
-				if err != nil {
-					log.Println("unable to parse url: ", err)
-				}
-
-				r.URL = u
-			} else {
-				lineHeader = strings.SplitN(line, ":", 2)
-				if len(lineHeader) > 1 {
-					r.Headers[lineHeader[0]] = lineHeader[1]
-				} else {
-					r.Headers[lineHeader[0]] = ""
-				}
-			}
-			line = ""
-			lineCount++
-		} else {
-			line += string(message[i])
-		}
-	}
-
-	return r
-}
