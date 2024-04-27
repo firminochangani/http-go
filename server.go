@@ -42,13 +42,17 @@ type Server struct {
 }
 
 func (s *Server) ListenAndServe() error {
+	s.setServerDefaults()
+
 	var err error
 	s.listener, err = net.Listen("tcp", s.Addr)
 	if err != nil {
 		return err
 	}
 
-	s.setServerDefaults()
+	if s.Addr == ":0" {
+		s.Addr = s.listener.Addr().String()
+	}
 
 	return s.acceptLoop()
 }
@@ -69,6 +73,11 @@ func (s *Server) Shutdown() error {
 func (s *Server) setServerDefaults() {
 	if s.Ctx == nil {
 		s.Ctx = context.Background()
+	}
+
+	// instruct net.Listen to automatically assign a port
+	if strings.TrimSpace(s.Addr) == "" {
+		s.Addr = ":0"
 	}
 
 	s.isRunning = atomic.Bool{}

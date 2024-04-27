@@ -10,8 +10,9 @@ func main() {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+
 		fmt.Println(r.Host)
-		// w.Write([]byte("OK 1"))
+		// w.Write([]byte(" OK 1"))
 	})
 
 	s := http.Server{
